@@ -1,0 +1,16 @@
+# Main environment: steps 1-7, clipping bounds, utility metrics, TRI attack, gamma, figures.
+# Thesis: python 3.10 in the NVIDIA container nvcr.io/nvidia/pytorch:24.05-py3 (GPU).
+torch>=2.2
+transformers==4.40.2
+importlib_resources
+nltk
+wn
+pandas
+numpy
+scikit-learn
+tqdm
+pyyaml
+matplotlib
+accelerate                  # Qwen2.5 background generation (TRI step 2)
+sentence-transformers==3.1.0
+einops                      # jina-embeddings-v3 (trust_remote_code)

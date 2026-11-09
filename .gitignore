@@ -1,0 +1,25 @@
+# MIMIC-III is credentialed data: NEVER commit notes, derived notes, splits or backgrounds
+data/
+outputs_*/
+privacy_eval/
+results/*.csv
+results/figures/
+logs/
+cache/
+
+# external code (cloned by scripts/setup_external.sh)
+external/DPMLM/
+external/clinical-outcome-prediction/
+external/tri_repo/
+
+# test artefacts
+tests/_work/
+
+# model weights / python
+*.bin
+*.safetensors
+*.pt
+__pycache__/
+*.pyc
+.venv/
+.env

@@ -1,0 +1,11 @@
+# Classification environment (step 8c only): python 3.8.
+# Thesis: NVIDIA container nvcr.io/nvidia/pytorch:21.06-py3.
+# FARM does not run on python >= 3.10 (ImportError: MutableMapping).
+# Install with:
+#   SKLEARN_ALLOW_DEPRECATED_SKLEARN_PACKAGE_INSTALL=True pip install -r requirements-farm.txt
+farm
+fire
+dotmap==1.3.0
+pyyaml
+mlflow==1.20.2
+protobuf==3.20.1
