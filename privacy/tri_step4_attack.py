@@ -106,7 +106,7 @@ MIMIC_CONFIG = {
     "use_additional_pretraining":           False,
  
     # ── Fine-tuning (classification) ──────────────────────────────────────────
-    "finetuning_epochs":                    15,
+    "finetuning_epochs":                    150,
     "finetuning_batch_size":                16,
     "finetuning_learning_rate":             5e-5,
     "finetuning_sliding_window":            "100-25",
