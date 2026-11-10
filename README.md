@@ -1,30 +1,25 @@
 # Differentially Private Text Anonymization with DPMLM and Rarity-based Sentence Rewriting
 
-Code for the master thesis *"Differentially Private Text Anonymization with DPMLM and Rarity-based Sentence Rewriting"* by Maroua Doghri (Technische Universität Berlin, Quality and Usability Lab, August 2026). Supervisor: Ibrahim Baroud; examiners: Prof. Dr.-Ing. Sebastian Möller and Prof. Dr.-Ing. Axel Küpper.
+Code for the master thesis *"Differentially Private Text Anonymization with DPMLM and Rarity-based Sentence Rewriting"* 
 
 **Idea.** De-identified clinical notes (MIMIC-III) still contain indirect clues (ethnicity, occupation, unusual events) that can re-identify a patient. Rewriting *every* sentence with differential privacy (DP) destroys the text. This project rewrites **only the statistically rare sentences**, found with corpus IDF, using the DP-MLM mechanism (Meisenbacher et al., 2024). It then compares this **Selective DP-MLM** with **Full DP-MLM** (all sentences) on utility and re-identification risk.
 
-```mermaid
-flowchart LR
-    A["MIMIC-III notes<br/>de-identified"] --> B["1 Segment notes"]
-    B --> C["2-3 IDF rarity<br/>per sentence"]
-    C --> D["4 Select rare sentences<br/>score at least mu + k sigma"]
-    D --> E["5 Clipping bounds<br/>per model"]
-    E --> F["6 DP-MLM rewrite<br/>epsilon per token"]
-    F --> G["7 Rebuild notes"]
-    G --> H["8 Utility<br/>Bio_ClinicalBERT ROC-AUC"]
-    G --> I["Utility<br/>similarity S, coherence C"]
-    G --> J["Privacy<br/>TRI attack, TRIR"]
-    H --> K["Trade-off gamma<br/>and figures"]
-    I --> K
-    J --> K
+
+```
+MIMIC-III notes ──> 1 Segment ──> 2-3 IDF rarity ──> 4 Select rare sentences (score ≥ μ + kσ)
+                                                              │
+7 Rebuild notes <── 6 DP-MLM rewrite (ε per token) <── 5 Clipping bounds (per model)
+      │
+      ├──> 8 Utility: Bio_ClinicalBERT ROC-AUC ──┐
+      ├──> Utility: similarity S, coherence C ───┼──> Trade-off γ and figures
+      └──> Privacy: TRI attack, TRIR ────────────┘
 ```
 
 ---
 
 ## Contents
 
-1. [Results in one minute](#1-results-in-one-minute)
+1. [Results in one minute](#1-results)
 2. [Repository layout](#2-repository-layout)
 3. [Installation](#3-installation)
 4. [Data](#4-data)
@@ -37,7 +32,7 @@ flowchart LR
 
 ---
 
-## 1. Results in one minute
+## 1. Results 
 
 Two tasks (in-hospital mortality **MP**, procedure prediction **PROC**), two rewriting models (RoBERTa-base, RoBERTa-clinical), ε ∈ {25, 50, 75, 100} per token, rarity thresholds k ∈ {1.0, 1.5, 2.0}.
 
@@ -165,7 +160,7 @@ bash scripts/run_all.sh mp report && bash scripts/run_all.sh proc report   # TRI
 | DP-MLM | CONCAT mode, `TEMP=True`, `STOP=False`, ε ∈ {25, 50, 75, 100} per token, chunks ≤ 200 sub-word tokens |
 | Classification | Bio_ClinicalBERT (FARM), 70/10/20 split with seed 123, training seeds 11/22/33, mean ROC-AUC |
 | S and C | 500 notes (seed 42); S = mean cosine of mpnet, gte-large, jina-v3; C = PPL_orig / PPL_priv with GPT-2, first 128 tokens |
-| TRI | 50 targets + 450 distractors (50E / 500R), Qwen2.5-7B-Instruct biographies, DistilBERT, 15 epochs, seeds 42/123/456/789/1337 |
+| TRI | 50 targets + 450 distractors (50E / 500R), Qwen2.5-7B-Instruct biographies, DistilBERT, 150 epochs, seeds 42/123/456/789/1337 |
 | γ | (1 − TRIR_p/TRIR_o) − ⅓[(1 − ROC_p/ROC_o) + (1 − S) + (1 − C)] |
 
 Compare your numbers with `results/thesis_reference/*.csv`. Small differences are expected from GPU nondeterminism and DP sampling.
@@ -198,23 +193,7 @@ Compare your numbers with `results/thesis_reference/*.csv`. Small differences ar
 
 ---
 
-## 8. Thesis text vs. code
-
-All numbers in the thesis were produced by this code. In a few places the thesis text describes the method differently or leaves out an implementation detail:
-
-| Topic | Thesis text | Code (= reported results) |
-|---|---|---|
-| Placeholders `[**…**]` in rarity | counted like other tokens | removed before IDF; rarity reflects the remaining wording |
-| Placeholders in rewriting | rewritten with brackets | brackets removed, contents rewritten |
-| Long segments | "no chunking" | segments > 200 tokens are rewritten in chunks (512-token model limit) |
-| Clipping bounds for Full | whole corpus (Appendix A) | same k = 2.0 bounds as Selective (same Δ everywhere) |
-| "Sentence" | sentence | rule-based segment of ≥ 6 words |
-
-Reasons and consequences: **[docs/THESIS_VS_CODE.md](docs/THESIS_VS_CODE.md)**. Fixes made while cleaning up the code (none changes how a successful run computes its results): **[docs/CHANGES.md](docs/CHANGES.md)**.
-
----
-
-## 9. Known limitations and tips
+## 8. Known limitations and tips
 
 - **IDF rarity is a lexical stand-in for risk.** It was not validated as a detector of identifying content. A random-selection control with the same rewriting rate is the most important missing experiment. See [docs/FUTURE_WORK.md](docs/FUTURE_WORK.md).
 - **The TRI attack is weak and the sample small.** The attacker re-identifies 8.4 % of the *original* notes (chance: 2 %). Report confidence intervals before comparing configurations.
@@ -225,7 +204,7 @@ Reasons and consequences: **[docs/THESIS_VS_CODE.md](docs/THESIS_VS_CODE.md)**. 
 
 ---
 
-## 10. Credits
+## 9. Credits
 
 Thesis: Maroua Doghri, *Differentially Private Text Anonymization with DPMLM and Rarity-based Sentence Rewriting*, master thesis, Technische Universität Berlin, 2026.
 
