@@ -1,21 +1,23 @@
-# Rarity-guided selective differential privacy for clinical text rewriting
+# Differentially Private Text Anonymization with DPMLM and Rarity-based Sentence Rewriting
 
-Code for the master thesis *"Rarity-guided selective differential privacy for clinical text rewriting"* (Maroua Doghri, 2026), written with the DFKI Speech and Language Technology group.
+Code for the master thesis *"Differentially Private Text Anonymization with DPMLM and Rarity-based Sentence Rewriting"* by Maroua Doghri (Technische Universität Berlin, Quality and Usability Lab, August 2026). Supervisor: Ibrahim Baroud; examiners: Prof. Dr.-Ing. Sebastian Möller and Prof. Dr.-Ing. Axel Küpper.
 
 **Idea.** De-identified clinical notes (MIMIC-III) still contain indirect clues (ethnicity, occupation, unusual events) that can re-identify a patient. Rewriting *every* sentence with differential privacy (DP) destroys the text. This project rewrites **only the statistically rare sentences**, found with corpus IDF, using the DP-MLM mechanism (Meisenbacher et al., 2024). It then compares this **Selective DP-MLM** with **Full DP-MLM** (all sentences) on utility and re-identification risk.
 
 ```mermaid
 flowchart LR
-    A[MIMIC-III notes<br/>de-identified] --> B[1 Segment<br/>notes]
-    B --> C[2-3 IDF rarity<br/>per sentence]
-    C --> D[4 Select rare sentences<br/>r(s) >= mu + k sigma]
-    D --> E[5 Clipping bounds<br/>per model]
-    E --> F[6 DP-MLM rewrite<br/>eps per token]
-    F --> G[7 Rebuild notes]
-    G --> H[8 Utility:<br/>Bio_ClinicalBERT ROC-AUC]
-    G --> I[Utility:<br/>similarity S, coherence C]
-    G --> J[Privacy:<br/>TRI attack, TRIR]
-    H & I & J --> K[Trade-off gamma<br/>+ figures]
+    A["MIMIC-III notes<br/>de-identified"] --> B["1 Segment notes"]
+    B --> C["2-3 IDF rarity<br/>per sentence"]
+    C --> D["4 Select rare sentences<br/>score at least mu + k sigma"]
+    D --> E["5 Clipping bounds<br/>per model"]
+    E --> F["6 DP-MLM rewrite<br/>epsilon per token"]
+    F --> G["7 Rebuild notes"]
+    G --> H["8 Utility<br/>Bio_ClinicalBERT ROC-AUC"]
+    G --> I["Utility<br/>similarity S, coherence C"]
+    G --> J["Privacy<br/>TRI attack, TRIR"]
+    H --> K["Trade-off gamma<br/>and figures"]
+    I --> K
+    J --> K
 ```
 
 ---
@@ -31,7 +33,7 @@ flowchart LR
 7. [Script reference](#7-script-reference)
 8. [Thesis text vs. code](#8-thesis-text-vs-code)
 9. [Known limitations and tips](#9-known-limitations-and-tips)
-10. [Citation and credits](#10-citation-and-credits)
+10. [Credits](#10-credits)
 
 ---
 
@@ -43,7 +45,8 @@ Two tasks (in-hospital mortality **MP**, procedure prediction **PROC**), two rew
 |---|---|
 | Selective DP-MLM keeps the text usable | semantic similarity S ≈ 0.98, coherence C 0.65–0.93 vs. Full S 0.68–0.90, C 0.05–0.23 |
 | Full DP-MLM lowers re-identification more | Full TRIR below the original (e.g. MP 50E 8.4 % → 4.0–5.6 %); Selective stays at the original level |
-| Differences between k, ε and models are mostly within noise | 50 targets × 5 seeds = 250 attempts per bar: one correct guess ≈ 0.4 points |
+
+Values are read from Figures 6.1–6.4 of the thesis. A note added for this repository: each TRIR bar averages 50 targets × 5 seeds = 250 attempts, so one correct re-identification moves a bar by about 0.4 points. Many differences between k, ε and rewriting models are therefore within noise.
 
 Figures, reported values and how to read them: **[docs/RESULTS.md](docs/RESULTS.md)**.
 
@@ -72,7 +75,7 @@ All outputs of a task go to `outputs_<task>/`, TRI runs to `privacy_eval/seed_<s
 
 ## 3. Installation
 
-The thesis ran on the DFKI SLURM cluster with NVIDIA containers and an A6000/V100 GPU. **Two Python environments** are needed, because the FARM classifier only runs on Python 3.8.
+The thesis experiments ran on a SLURM GPU cluster with NVIDIA containers and an A6000/V100 GPU. **Two Python environments** are needed, because the FARM classifier only runs on Python 3.8.
 
 | Environment | Used for | Thesis container | Install |
 |---|---|---|---|
@@ -87,7 +90,7 @@ python -m spacy download en_core_web_lg  # needed by the TRI attack (tri.py)
 python -c "import wn; wn.download('oewn:2022')"   # WordNet used by DP-MLM
 ```
 
-`transformers==4.40.2` is pinned on purpose: newer versions refuse the PyTorch build of the 24.05 container.
+The thesis runs used `transformers==4.40.2`: newer versions failed their PyTorch version check in the 24.05 container.
 
 Models downloaded from Hugging Face during the runs: `FacebookAI/roberta-base`, `pminervini/RoBERTa-base-PM-M3-Voc-hf` (rewriting), `emilyalsentzer/Bio_ClinicalBERT` (classifier), `Qwen/Qwen2.5-7B-Instruct` (TRI backgrounds), `distilbert-base-uncased` (TRI attacker), `gpt2`, `sentence-transformers/all-mpnet-base-v2`, `thenlper/gte-large`, `jinaai/jina-embeddings-v3` (S and C).
 
@@ -216,20 +219,19 @@ Reasons and consequences: **[docs/THESIS_VS_CODE.md](docs/THESIS_VS_CODE.md)**. 
 - **IDF rarity is a lexical stand-in for risk.** It was not validated as a detector of identifying content. A random-selection control with the same rewriting rate is the most important missing experiment. See [docs/FUTURE_WORK.md](docs/FUTURE_WORK.md).
 - **The TRI attack is weak and the sample small.** The attacker re-identifies 8.4 % of the *original* notes (chance: 2 %). Report confidence intervals before comparing configurations.
 - **ε is per token.** A note's total privacy budget grows with the number of rewritten tokens.
-- **Full DP-MLM is slow.** About 567k sentences per task; submit one job per ε. Step 6 resumes from `checkpoint_*.csv` if a job is killed.
+- **Full DP-MLM is slow.** The thesis runs rewrote about 567k sentences per Full configuration; submit one job per ε. Step 6 resumes from `checkpoint_*.csv` if a job is killed.
 - **Step 8c** skips experiments that already have an `eval_results.txt`; use `--force` to re-run. FARM caches data per run in `/tmp/cache_*` to avoid mixing ε values.
-- Delete `language_model.bin` / `prediction_head_0.bin` after evaluation to save about 5 GB per run.
+- Deleting `language_model.bin` / `prediction_head_0.bin` after evaluation saves disk space (about 5 GB in the thesis runs).
 
 ---
 
-## 10. Citation and credits
+## 10. Credits
 
-```
-@mastersthesis{doghri2026rarity,
-  title  = {Rarity-guided selective differential privacy for clinical text rewriting},
-  author = {Doghri, Maroua},
-  year   = {2026}
-}
-```
+Thesis: Maroua Doghri, *Differentially Private Text Anonymization with DPMLM and Rarity-based Sentence Rewriting*, master thesis, Technische Universität Berlin, 2026.
 
-Built on: DP-MLM (Meisenbacher et al., 2024, [sjmeis/DPMLM](https://github.com/sjmeis/DPMLM)), clinical outcome prediction (van Aken et al., 2021, [bvanaken/clinical-outcome-prediction](https://github.com/bvanaken/clinical-outcome-prediction)), and the TRI attack (Manzanares-Salor et al., 2024, [BenetManzanaresSalor/TextRe-Identification](https://github.com/BenetManzanaresSalor/TextRe-Identification)). The evaluation protocol (S, C, TRI, γ) follows DP-IPI (Baroud et al.). Please check the licences of these repositories and of MIMIC-III before reuse.
+The code builds on:
+- DP-MLM (Meisenbacher et al., 2024): [sjmeis/DPMLM](https://github.com/sjmeis/DPMLM)
+- clinical outcome prediction tasks and classifier (van Aken et al., 2021): [bvanaken/clinical-outcome-prediction](https://github.com/bvanaken/clinical-outcome-prediction)
+- the TRI re-identification attack (Manzanares-Salor et al., 2024): [BenetManzanaresSalor/TextRe-Identification](https://github.com/BenetManzanaresSalor/TextRe-Identification)
+
+Please check the licences of these repositories and the MIMIC-III data use agreement before reuse.
